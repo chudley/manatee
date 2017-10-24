@@ -60,6 +60,7 @@ function mksitter
 	#    o the backup server configuration file
 	#
 	mkdir -p $sitterdir
+	mkdir -p $sitterdir/9.2
 	mkdir -p $sitterdir/log
 	chown postgres:postgres $sitterdir/log || \
 	    fail "failed to chown postgres log directory"
@@ -67,6 +68,7 @@ function mksitter
 	echo -n "peer $which: creating configuration ... "
 	$mds_mksitterconfig "$PWD/devconfs" "$ip" "$zkconnstr" "$which" \
 	    > "$sitterdir/sitter.json" || fail "failed"
+	echo "{}" > "$sitterdir/pg_overrides.json" || fail "failed"
 	echo "done."
 
 	echo -n "peer $which: fetching port from generated config ... "
@@ -75,11 +77,14 @@ function mksitter
 	echo "$port."
 
 	echo -n "peer $which: creating template postgresql.conf ... "
-	egrep -v '^\s*port\s*=' $mds_basedir/etc/postgresql.conf |
-	    egrep -v '^\s*log_directory\s*=' > "$sitterdir/postgres.conf"
+	egrep -v '^\s*port\s*=' "$mds_basedir/etc/9.2/postgresql.conf" |
+	    egrep -v '^\s*log_directory\s*=' > "$sitterdir/9.2/postgresql.conf"
 	echo "port = $port # (change requires restart)" >> \
-	    "$sitterdir/postgres.conf"
-	echo "log_directory = '$sitterdir/log'" >> "$sitterdir/postgres.conf"
+	    "$sitterdir/9.2/postgresql.conf"
+	echo "log_directory = '$sitterdir/log'" >> "$sitterdir/9.2/postgresql.conf"
+	for conf in recovery pg_hba; do
+		cp "$mds_basedir/etc/9.2/$conf.conf" "$sitterdir/9.2/."
+	done
 	echo "done."
 
 	echo -n "peer $which: creating backupserver config ... "

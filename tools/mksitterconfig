@@ -26,6 +26,18 @@ var configTemplate = {
     'backupPort': 10002,
     'ip': null,
     'postgresMgrCfg': {
+        "dataConfig": null,
+        "postgresConfDir": null,
+        "defaultVersion": "9.2",
+        "pgBaseDir": "/opt/postgresql/",
+        "postgresConfFile": "postgresql.conf",
+        "recoveryConfFile": "recovery.conf",
+        "hbaConfFile": "pg_hba.conf",
+        "versions": {
+            "9.2": "9.2.4",
+            "9.6": "9.6.3"
+        },
+
         'dataDir': null,
         'dbUser': 'postgres',
         'hbaConf': './etc/pg_hba.conf',
@@ -109,7 +121,7 @@ function main()
     which = parseInt(process.argv[5], 10);
     if (isNaN(which) || which <= 0)
         usage('WHICH argument should be a positive integer');
-    shardpath = '/manatee_test/1';
+    shardpath = '/manatee/dev0';
 
     child_process.exec('zonename', function (err, stdout, stderr) {
         var config, reason;
@@ -164,11 +176,17 @@ function mkconfig(template, params)
     datadir = util.format('%s/data', mountpoint);
     cookie = util.format('/var/tmp/manatee%s_sync_cookie', which);
     pgconf = util.format('%s/sitter%s/postgres.conf', params.root, which);
+    pgconfdir = util.format('%s/sitter%s', params.root,
+        which);
+    dataconfig = util.format('%s/manatee-config.json', mountpoint);
 
     /*
      * Construct the final configuration and return it.
      */
     rv.ip = params.ip;
+
+    rv.postgresMgrCfg.postgresConfDir = pgconfdir;
+    rv.postgresMgrCfg.dataConfig = dataconfig;
     rv.postgresMgrCfg.dataDir = datadir;
     rv.postgresMgrCfg.postgresConf = pgconf;
     rv.postgresMgrCfg.syncStateCheckerCfg.cookieLocation = cookie;

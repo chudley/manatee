@@ -84,7 +84,7 @@ function usage(message)
 {
     if (message)
         console.error('%s: %s', arg0, message);
-    console.error('usage: %s SELF_IP ZK_IP:ZK_PORT[...] WHICH', arg0);
+    console.error('usage: %s SELF_IP ZK_IP:ZK_PORT[...] WHICH SHARD', arg0);
     process.exit(2);
 }
 
@@ -96,9 +96,9 @@ function fatal(message)
 
 function main()
 {
-    var root, ip, shardpath, zkconnstr, which;
+    var root, ip, shardpath, zkconnstr, which, shardname;
 
-    if (process.argv.length < 6)
+    if (process.argv.length < 7)
         usage();
 
     root = process.argv[2];
@@ -121,7 +121,9 @@ function main()
     which = parseInt(process.argv[5], 10);
     if (isNaN(which) || which <= 0)
         usage('WHICH argument should be a positive integer');
-    shardpath = '/manatee/dev0';
+
+    shardname = process.argv[6];
+    shardpath = '/manatee/' + shardname.toString();
 
     child_process.exec('zonename', function (err, stdout, stderr) {
         var config, reason;

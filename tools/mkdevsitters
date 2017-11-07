@@ -11,6 +11,7 @@ mds_basedir="$(dirname ${BASH_SOURCE[0]})/.."
 mds_mksitterconfig="$mds_basedir/tools/mksitterconfig"
 mds_ip="$1"
 mds_zkconnstr="$2"
+mds_shard="$3"
 
 function fail
 {
@@ -27,6 +28,7 @@ function mksitter
 	which="$1"
 	ip="$2"
 	zkconnstr="$3"
+	shard="$4"
 	dataset="zones/$mds_zonename/data/peer$which"
 	sitterdir="$PWD/devconfs/sitter$which"
 	mountpoint="$PWD/devconfs/datasets/manatee$which"
@@ -67,7 +69,7 @@ function mksitter
 
 	echo -n "peer $which: creating configuration ... "
 	$mds_mksitterconfig "$PWD/devconfs" "$ip" "$zkconnstr" "$which" \
-	    > "$sitterdir/sitter.json" || fail "failed"
+	    "$shard" > "$sitterdir/sitter.json" || fail "failed"
 	echo "{}" > "$sitterdir/pg_overrides.json" || fail "failed"
 	echo "done."
 
@@ -104,12 +106,12 @@ if ! type zonename > /dev/null 2>&1; then
 	fail "cannot determine dataset root: zonename(1M) command not found"
 fi
 
-if [[ $# -ne 2 ]]; then
-	echo "usage: $mds_arg0 LOCAL_IP ZK_IP:ZK_PORT" >&2
+if [[ $# -ne 3 ]]; then
+	echo "usage: $mds_arg0 LOCAL_IP ZK_IP:ZK_PORT SHARD" >&2
 	exit 2
 fi
 
 mds_zonename="$(zonename)"
 for (( i = 1; i <= 3; i++ )) {
-	mksitter $i "$mds_ip" "$mds_zkconnstr"
+	mksitter $i "$mds_ip" "$mds_zkconnstr" "$mds_shard"
 }

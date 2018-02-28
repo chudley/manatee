@@ -28,7 +28,7 @@ var configTemplate = {
     'postgresMgrCfg': {
         "dataConfig": null,
         "postgresConfDir": null,
-        "defaultVersion": "9.2",
+        "defaultVersion": null,
         "pgBaseDir": "/opt/postgresql/",
         "postgresConfFile": "postgresql.conf",
         "recoveryConfFile": "recovery.conf",
@@ -84,7 +84,7 @@ function usage(message)
 {
     if (message)
         console.error('%s: %s', arg0, message);
-    console.error('usage: %s SELF_IP ZK_IP:ZK_PORT[...] WHICH SHARD', arg0);
+    console.error('usage: %s SELF_IP ZK_IP:ZK_PORT[...] WHICH SHARD PG_VERSION', arg0);
     process.exit(2);
 }
 
@@ -96,7 +96,7 @@ function fatal(message)
 
 function main()
 {
-    var root, ip, shardpath, zkconnstr, which, shardname;
+    var root, ip, shardpath, zkconnstr, which, shardname, pgversion;
 
     if (process.argv.length < 7)
         usage();
@@ -123,7 +123,22 @@ function main()
         usage('WHICH argument should be a positive integer');
 
     shardname = process.argv[6];
-    shardpath = '/manatee/' + shardname.toString();
+    if (typeof(shardname) !== 'string')
+        usage('SHARD does not apear to be a string');
+
+    /*
+     * Basic checks on whether we have a full shard path starting at the root,
+     * or a shard name that we'll append to the "/manatee" path.
+     */
+    if (shardname.substr('/', 1) == '/') {
+        shardpath = shardname;
+    } else {
+        shardpath = '/manatee/' + shardname;
+    }
+
+    pgversion = process.argv[7];
+    if ([ '9.2', '9.6' ].indexOf(pgversion) === -1)
+        usage('PG_VERSION should be either "9.2" or "9.6"');
 
     child_process.exec('zonename', function (err, stdout, stderr) {
         var config, reason;
@@ -140,7 +155,8 @@ function main()
             'zkconnstr': zkconnstr,
             'zonename': stdout.trim(),
             'which': which,
-            'shardpath': shardpath
+            'shardpath': shardpath,
+            'pgversion': pgversion
         });
 
         console.log(JSON.stringify(config, false, '\t'));
@@ -200,6 +216,7 @@ function mkconfig(template, params)
     rv.zkCfg.connStr = params.zkconnstr;
     rv.shardPath = params.shardpath;
     rv.zoneId = params.zonename;
+    rv.defaultVersion = params.pgversion;
     return (rv);
 }
 

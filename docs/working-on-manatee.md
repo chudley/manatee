@@ -25,13 +25,10 @@ non-production Triton installation that you own, it's generally acceptable to
 provision your zone onto the admin and external networks and make use of
 Triton's `binder` instance.
 
-Run all of the following as root:
+The following steps should run as roon inside a SmartOS zone provisioned onto
+the multiarch 13.3.1 image (image_uuid=4aec529c-55f9-11e3-868e-a37707fcbe86).
+This zone will also need to be provisioned with a delegated dataset.
 
-1. Provision a SmartOS zone using multiarch 13.3.1.  This is image
-   4aec529c-55f9-11e3-868e-a37707fcbe86.  Be sure to provision the zone with a
-   delegated ZFS dataset.
-1. Log into the zone and run the following steps as root (or with sudo or
-   as another privileged user).
 1. Install packages:
 
         # pkgin in git gmake gcc47 bison flex
@@ -40,36 +37,8 @@ Run all of the following as root:
 
         # git clone https://github.com/joyent/manatee
         # cd manatee
+        # # checkout an applicable branch if appropriate
         # make
-
-1. Get and build the versions of PostgreSQL that you're interested in (currently
-supported are 9.6 and 9.2).
-    1. For 9.2:
-
-        # git submodule add https://github.com/postgres/postgres.git \
-              deps/postgresql92 && cd deps/postgresql92 && git checkout 73c122 \
-              && cd -
-        # make -f Makefile.postgres RELSTAGEDIR=/tmp/test \
-              DEPSDIR=/root/manatee/deps pg92
-
-    1. For 9.6:
-
-        # git submodule add https://github.com/postgres/postgres.git \
-              deps/postgresql96 && cd deps/postgresql96 && git checkout ca9cfe \
-              && cd -
-        # make -f Makefile.postgres RELSTAGEDIR=/tmp/test \
-              DEPSDIR=/root/manatee/deps pg96
-
-1. Install PostgreSQL versions (note: the PostgreSQL binary directory is a
-symlink created by Manatee, so won't be available until Manatee has started):
-
-        # cp -R /tmp/test/root/opt/postgresql /opt/.
-        # groupadd -g 907 postgres
-        # useradd -u 907 -g postgres postgres
-        # echo "postgres    ALL=(ALL) NOPASSWD: /usr/bin/chown, \
-              /usr/bin/chmod, /opt/local/bin/chown, /opt/local/bin/chmod" \
-              >> /opt/local/etc/sudoers
-        # echo "/opt/postgresql/current/bin:$PATH"
 
 1. Get the following details about the cluster:
     1. An IP address from "ifconfig -a".  We'll call this $SELF_IP.  The IP to
@@ -79,11 +48,12 @@ symlink created by Manatee, so won't be available until Manatee has started):
     1. A name for this cluster as $SHARD_NAME, which will define the location
         that the cluster's state will be stored in ZooKeeper, so ensure it doesn't
         violate ZooKeeper's conventions.  Either the full path (e.g.
-        "/my/test/cluster"), or the top level directory name (e.g. "cluster123",
+        "/my/test/cluster"), or the top level directory name (e.g. "testing123",
         in which case we'll prefix "/manatee/" to this choice, making the full
-        path "/manatee/cluster123").
+        path "/manatee/testing123").
     1. The version of PostgreSQL you want to use as $PG_VERSION.  Supported
-        options for this are "9.2" or "9.6".
+        options for this are "9.2" or "9.6".  If no value is supplied, the
+        default value of "9.6" is used.
 
 1. Run the setup script
 
@@ -111,7 +81,7 @@ zone based on that image, deployed on a network with a ZooKeeper instance
 running.  On Triton, be sure to set `delegate_dataset=true` when provisioning.  On
 standalone SmartOS, set `delegate_dataset=true` when you invoke "vmadm create".
 
-### Installing packages
+### Installing packages/dependencies
 
 You'll need git, GNU make, a compiler toolchain, and some libraries that are
 required for building PostgreSQL.  On the above multiarch SmartOS zone, you can
@@ -122,6 +92,10 @@ install these with:
 PostgreSQL is built from source, which we pull down as a submodule and checkout
 at a certain commit to define the version.  Once built in a temporary location,
 we move it to a location on the filesystem that our Manatee configs expect.
+This is done by the `./tool/mkdevsitters` script (detailed in "Using
+`mkdevsitters`", but is described below in case you should need to install
+PostgreSQL directly.
+
 Checkout is done like so:
 
     # git submodule add https://github.com/postgres/postgres.git \
@@ -141,12 +115,12 @@ Note: Manatee will create a symlink under "/opt/postgresql" to the current
 version of PostgreSQL that it expects as "/opt/postgresql/current".  This will
 not be available until Manatee has been started for the first time.
 
-### Creating ZFS datasets and configurations
+### Using `mkdevsitters`
 
 There's a tool inside the repo called "mkdevsitters" which configures the local
 system to run three Manatee peers.  You'll have to run the three peers by hand.
-The script just creates configuration files and ZFS datasets.  The script must
-be run as root.
+The script builds/installs PostgreSQL, creates configuration files, and creates
+ZFS datasets.  The script must be run as root.
 
 To use the script, you'll need to know:
 
@@ -165,7 +139,7 @@ To use the script, you'll need to know:
   cluster.
 * The version of PostgreSQL that you're using.  Either "9.2" or "9.6".
 
-To use this script, as the root user, run:
+To use this script, run:
 
     # ./tools/mkdevsitters MY_IP ZK_IPS SHARD_NAME PG_VERSION
 
@@ -177,6 +151,8 @@ I might run this as root:
 
 This does several things:
 
+* Builds and installs all versions of PostgreSQL currently supported by Manatee
+  (which is currently 9.2 and 9.6).
 * Creates a directory called "devconfs" in the current directory.  "devconfs"
   will contain the configuration and data for each of the three test peers.
 * Creates three ZFS datasets under zones/$(zonename)/data, called "peer1",
@@ -199,13 +175,13 @@ the first peer runs postgres on port 5432, the second peer runs postgres on port
 There are currently two components to run for each peer: the sitter (which also
 starts postgres) and the backup server (which is used for bootstrapping
 replication for new downstream peers).  The following is an example of starting
-a Manatee peer and ensuring its output is directed to a file and stdout:
+a Manatee peer and ensuring its output is directed to a file:
 
     # seq 1 3 | while read peer; do node --abort-on-uncaught-exception \
           sitter.js -vvv -f devconfs/sitter$peer/sitter.json \
           > /var/tmp/sitter$peer.log 2>&1 & done
 
-Be sure to run this as root.  Logs can be tailed under `/var/tmp/peer*.log`.  To
+Be sure to run this as root.  Logs can be tailed under `/var/tmp/sitter*.log`.  To
 kill all running instances of sitter and postgres, run:
 
     # pgrep -f sitter | while read pid; do pkill -9 -P $pid; done
@@ -239,8 +215,8 @@ following commands:
         # rm -rf devconfs
 
 1. In your ZooKeeper instance:
-    1. Note: this step is only required if you plan on re-using this identifier
-    again.
+    1. Note: this step is only required if you plan on re-using this cluster's
+    name again in a new cluster.
 
         # zkCli.sh rmr /manatee/testing123
 

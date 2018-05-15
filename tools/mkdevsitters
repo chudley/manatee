@@ -14,6 +14,7 @@ mds_pgsupported=(
     ["9.2"]="73c122"
     ["9.6"]="ca9cfe"
 )
+mds_pgbuilddir="/tmp/mds_pgbuild"
 mds_ip="$1"
 mds_zkconnstr="$2"
 mds_shard="$3"
@@ -115,7 +116,7 @@ function ensurepostgres {
     local vshort
 
     if ! json -f package.json > /dev/null 2>&1; then
-        fail "must be in manatee directory"
+        fail "must be in manatee project directory"
     fi
 
     if ! ls .git > /dev/null 2>&1; then
@@ -135,24 +136,25 @@ function ensurepostgres {
             >> /opt/local/etc/sudoers
     fi
 
-
     echo "ensuring supported postgres versions are checked out and installed"
-    git submodule add https://github.com/reorg/pg_repack.git deps/pg_repack \
-        > /dev/null 2>&1
+    git submodule add https://github.com/reorg/pg_repack.git deps/pg_repack
     for version in ${!mds_pgsupported[@]}; do
         vshort=$(echo "$version" | sed 's/\.//')
         git submodule add https://github.com/postgres/postgres.git \
-            "deps/postgresql$vshort" > /dev/null 2>&1
+            "deps/postgresql$vshort"
         cd "deps/postgresql$vshort"
-        git checkout "${mds_pgsupported[$version]}" > /dev/null 2>&1
+        git checkout "${mds_pgsupported[$version]}"
         cd - > /dev/null 2>&1
-        if ! ls "/tmp/pgbuild/root/opt/postgresql/$version"*"/bin/postgres" \
+        if ! ls "$mds_pgbuilddir/root/opt/postgresql/$version"*"/bin/postgres" \
             > /dev/null 2>&1; then
-            make -f Makefile.postgres RELSTAGEDIR="/tmp/pgbuild" \
-                DEPSDIR="$PWD/deps" "pg$vshort"
+            echo "building postgres $version (log at $mds_pgbuilddir/build.log)"
+            mkdir -p "$mds_pgbuilddir"
+            make -f Makefile.postgres RELSTAGEDIR="$mds_pgbuilddir" \
+                DEPSDIR="$PWD/deps" "pg$vshort" \
+                >> "$mds_pgbuilddir/build.log" 2>&1
         fi
     done
-    cp -R /tmp/pgbuild/root/opt/postgresql /opt/. 
+    cp -R /tmp/pgbuild/root/opt/postgresql /opt/.
 }
 
 if ! type zonename > /dev/null 2>&1; then

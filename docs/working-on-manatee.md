@@ -47,12 +47,18 @@ supported are 9.6 and 9.2).
     1. For 9.2:
 
         # git submodule add https://github.com/postgres/postgres.git \
-            deps/postgresql92 && cd deps/postgresql92 && git checkout 73c122 \
-            && cd -
+              deps/postgresql92 && cd deps/postgresql92 && git checkout 73c122 \
+              && cd -
         # make -f Makefile.postgres RELSTAGEDIR=/tmp/test \
-            DEPSDIR=/root/manatee/deps pg92
+              DEPSDIR=/root/manatee/deps pg92
 
     1. For 9.6:
+
+        # git submodule add https://github.com/postgres/postgres.git \
+              deps/postgresql96 && cd deps/postgresql96 && git checkout ca9cfe \
+              && cd -
+        # make -f Makefile.postgres RELSTAGEDIR=/tmp/test \
+              DEPSDIR=/root/manatee/deps pg96
 
 1. Install PostgreSQL versions (note: the PostgreSQL binary directory is a
 symlink created by Manatee, so won't be available until Manatee has started):
@@ -61,8 +67,8 @@ symlink created by Manatee, so won't be available until Manatee has started):
         # groupadd -g 907 postgres
         # useradd -u 907 -g postgres postgres
         # echo "postgres    ALL=(ALL) NOPASSWD: /usr/bin/chown, \
-            /usr/bin/chmod, /opt/local/bin/chown, /opt/local/bin/chmod" >> \
-            /opt/local/etc/sudoers
+              /usr/bin/chmod, /opt/local/bin/chown, /opt/local/bin/chmod" \
+              >> /opt/local/etc/sudoers
         # echo "/opt/postgresql/current/bin:$PATH"
 
 1. Get the following details about the cluster:
@@ -83,27 +89,8 @@ symlink created by Manatee, so won't be available until Manatee has started):
 
         # ./tools/mkdevsitters $SELF_IP $ZK_CONN_STR $SHARD_NAME $PG_VERSION
 
-1. For each peer ("1", "2", "3"), open up two terminals.  In the first, start
-   the sitter:
-
-        # node sitter.js -f devconfs/sitter1/sitter.json | bunyan
-
-   In the second terminal, start the backup server:
-
-        # node backupserver.js -f devconfs/sitter1/backupserver.json | bunyan
-
-If you want to clean everything up (**note: this will destroy all data stored
-in these peers!)**, run:
-
-    # for peer in 1 2 3; do zfs destroy -R zones/$(zonename)/data/peer$peer; done
-
-**This command is very destructive!  Be sure you're okay with destroying the
-datasets, snapshots, and clones of all of the peers you created before you run
-this command.**
-
-Then run:
-
-    # rm -rf devconfs
+1. Start the cluster using the methods described in the "Running the cluster"
+    section
 
 ## Details
 
@@ -138,15 +125,15 @@ we move it to a location on the filesystem that our Manatee configs expect.
 Checkout is done like so:
 
     # git submodule add https://github.com/postgres/postgres.git \
-        deps/postgresql96 && cd deps/postgresql96 && \
-        git checkout ca9cfe && cd -
+          deps/postgresql96 && cd deps/postgresql96 && \
+          git checkout ca9cfe && cd -
 
 Building PostgreSQL like so:
 
     # make -f Makefile.postgres RELSTAGEDIR=/tmp/test \
-        DEPSDIR=/root/manatee/deps pg96
+          DEPSDIR=/root/manatee/deps pg96
 
-And installaing like so:
+And installing like so:
 
     # cp -R /tmp/test/root/opt/postgresql /opt/.
 
@@ -207,20 +194,53 @@ the first peer runs postgres on port 5432, the second peer runs postgres on port
 5442, and the third peer runs postgres on port 5452.
 
 
-### Running each peer
+### Running the cluster
 
 There are currently two components to run for each peer: the sitter (which also
 starts postgres) and the backup server (which is used for bootstrapping
-replication for new downstream peers).  To start the first peer, use:
+replication for new downstream peers).  The following is an example of starting
+a Manatee peer and ensuring its output is directed to a file and stdout:
 
-    # node sitter.js -f devconfs/sitter1/sitter.json
+    # seq 1 3 | while read peer; do node --abort-on-uncaught-exception \
+          sitter.js -vvv -f devconfs/sitter$peer/sitter.json \
+          > /var/tmp/sitter$peer.log 2>&1 & done
 
-You'll probably want to pipe this to bunyan.  Be sure to run this as root.  To
-run other peers, replace "sitter1" with "sitter2" or "sitter3".
+Be sure to run this as root.  Logs can be tailed under `/var/tmp/peer*.log`.  To
+kill all running instances of sitter and postgres, run:
+
+    # pgrep -f sitter | while read pid; do pkill -9 -P $pid; done
+
+Because sitter spawns PostgreSQL as a child process, care must be taken to
+ensure that PostgreSQL is also stopped when sitter is.  If in doubt,
+`pkill postgres` will ensure that all instances of PostgreSQL are stopped.
 
 Similarly, to run the backupserver, use:
 
-    # node backupserver.js -f devconfs/sitter1/backupserver.json
+    # seq 1 3 | while read peer; do node --abort-on-uncaught-exception \
+          backupserver.js -f devconfs/sitter$peer/backupserver.json \
+	  > /var/tmp/backupserver$peer.log >2&1 & done
 
-There's also a snapshotter, but running that for development is not yet
-documented.
+### Clearing the cluster
+
+**Note: This section will destroy data!  Be very sure that you no longer need
+this cluster's data before proceeding.**
+
+If you want to clean everything up and start with an empty cluster, run the
+following commands:
+
+1. In your dev zone:
+    1.
+
+        # seq 1 3 | while read peer; do \
+              zfs destroy -R zones/$(zonename)/data/peer$peer; done
+
+    1.
+
+        # rm -rf devconfs
+
+1. In your ZooKeeper instance:
+    1. Note: this step is only required if you plan on re-using this identifier
+    again.
+
+        # zkCli.sh rmr /manatee/testing123
+

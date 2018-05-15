@@ -9,6 +9,11 @@ mds_arg0="$(basename ${BASH_SOURCE[0]})"
 mds_zonename=
 mds_basedir="$(dirname ${BASH_SOURCE[0]})/.."
 mds_mksitterconfig="$mds_basedir/tools/mksitterconfig"
+declare -A mds_pgsupported
+mds_pgsupported=(
+    ["9.2"]="73c122"
+    ["9.6"]="ca9cfe"
+)
 mds_ip="$1"
 mds_zkconnstr="$2"
 mds_shard="$3"
@@ -86,7 +91,8 @@ function mksitter
 	    egrep -v '^\s*log_directory\s*=' > "$sitterdir/9.6/postgresql.conf"
 	echo "port = $port # (change requires restart)" >> \
 	    "$sitterdir/$pgversion/postgresql.conf"
-	echo "log_directory = '$sitterdir/log'" >> "$sitterdir/$pgversion/postgresql.conf"
+	echo "log_directory = '$sitterdir/log'" >> \
+	    "$sitterdir/$pgversion/postgresql.conf"
 	for conf in recovery pg_hba; do
 		cp "$mds_basedir/etc/$conf.conf" "$sitterdir/$pgversion/."
 	done
@@ -105,6 +111,50 @@ function mksitter
 	echo "done."
 }
 
+function ensurepostgres {
+    local vshort
+
+    if ! json -f package.json > /dev/null 2>&1; then
+        fail "must be in manatee directory"
+    fi
+
+    if ! ls .git > /dev/null 2>&1; then
+        fail "pwd doesn't appear to be a git repository"
+    fi
+
+    # Best effort attempt at creating postgres user and group.  It is assumed
+    # that if these fail then the user/group already exists, but there's a good
+    # chance they could fail for other reasons.  For development usage this is
+    # probably enough
+    groupadd -g 907 postgres > /dev/null 2>&1
+    useradd -u 907 -g postgres postgres > /dev/null 2>&1
+
+    if ! grep ^postgres /opt/local/etc/sudoers > /dev/null 2>&1; then
+        echo "postgres    ALL=(ALL) NOPASSWD: /usr/bin/chown, /usr/bin/chmod, \
+            /opt/local/bin/chown, /opt/local/bin/chmod" \
+            >> /opt/local/etc/sudoers
+    fi
+
+
+    echo "ensuring supported postgres versions are checked out and installed"
+    git submodule add https://github.com/reorg/pg_repack.git deps/pg_repack \
+        > /dev/null 2>&1
+    for version in ${!mds_pgsupported[@]}; do
+        vshort=$(echo "$version" | sed 's/\.//')
+        git submodule add https://github.com/postgres/postgres.git \
+            "deps/postgresql$vshort" > /dev/null 2>&1
+        cd "deps/postgresql$vshort"
+        git checkout "${mds_pgsupported[$version]}" > /dev/null 2>&1
+        cd - > /dev/null 2>&1
+        if ! ls "/tmp/pgbuild/root/opt/postgresql/$version"*"/bin/postgres" \
+            > /dev/null 2>&1; then
+            make -f Makefile.postgres RELSTAGEDIR="/tmp/pgbuild" \
+                DEPSDIR="$PWD/deps" "pg$vshort"
+        fi
+    done
+    cp -R /tmp/pgbuild/root/opt/postgresql /opt/. 
+}
+
 if ! type zonename > /dev/null 2>&1; then
 	fail "cannot determine dataset root: zonename(1M) command not found"
 fi
@@ -118,10 +168,11 @@ if [[ -z "$mds_pgversion" ]]; then
     mds_pgversion="9.6"
 fi
 
-if [[ "$mds_pgversion" != "9.2" ]] && [[ "$mds_pgversion" != "9.6" ]]; then
+if [[ ! "${!mds_pgsupported[@]}" =~ "${mds_pgversion}" ]]; then
     fail "supported version are \"9.2\" or \"9.6\""
 fi
 
+ensurepostgres
 mds_zonename="$(zonename)"
 for (( i = 1; i <= 3; i++ )) {
 	mksitter $i "$mds_ip" "$mds_zkconnstr" "$mds_shard" "$mds_pgversion"

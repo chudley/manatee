@@ -194,7 +194,7 @@ Similarly, to run the backupserver, use:
 
     # seq 1 3 | while read peer; do node --abort-on-uncaught-exception \
           backupserver.js -f devconfs/sitter$peer/backupserver.json \
-	  > /var/tmp/backupserver$peer.log >2&1 & done
+          > /var/tmp/backupserver$peer.log >2&1 & done
 
 ### Clearing the cluster
 
@@ -205,18 +205,19 @@ If you want to clean everything up and start with an empty cluster, run the
 following commands:
 
 1. In your dev zone:
-    1.
 
-        # seq 1 3 | while read peer; do \
-              zfs destroy -R zones/$(zonename)/data/peer$peer; done
+    1. Destroy all ZFS datasets:
 
-    1.
+            # seq 1 3 | while read peer; do \
+                zfs destroy -R zones/$(zonename)/data/peer$peer; done
 
-        # rm -rf devconfs
+    1. Delete all development configs:
+
+            # rm -rf devconfs
 
 1. In your ZooKeeper instance:
+
     1. Note: this step is only required if you plan on re-using this cluster's
     name again in a new cluster.
 
-        # zkCli.sh rmr /manatee/testing123
-
+            # zkCli.sh rmr /manatee/testing123

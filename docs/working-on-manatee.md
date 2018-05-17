@@ -121,9 +121,9 @@ at a certain commit to define the version.  Once built in a temporary location,
 we move it to a location on the filesystem that our Manatee configs expect.
 This is done by the `./tool/mkdevsitters` script (detailed in "Using
 `mkdevsitters`", but is described below in case you should need to install
-PostgreSQL directly.
+PostgreSQL directly.)
 
-Checkout is done like so:
+Checkout is done like so (in this example for 9.6):
 
     # git submodule add https://github.com/postgres/postgres.git \
         deps/postgresql96 && cd deps/postgresql96 && \
@@ -202,7 +202,7 @@ the first peer runs postgres on port 5432, the second peer runs postgres on port
 There are currently two components to run for each peer: the sitter (which also
 starts postgres) and the backup server (which is used for bootstrapping
 replication for new downstream peers).  The following is an example of starting
-a Manatee peer and ensuring its output is directed to a file:
+the cluster and ensuring each peer's output is directed to a file:
 
     # seq 1 3 | while read peer; do node --abort-on-uncaught-exception \
         sitter.js -vvv -f devconfs/sitter$peer/sitter.json \
@@ -217,7 +217,7 @@ Because sitter spawns PostgreSQL as a child process, care must be taken to
 ensure that PostgreSQL is also stopped when sitter is.  If in doubt,
 `pkill postgres` will ensure that all instances of PostgreSQL are stopped.
 
-Similarly, to run the backupserver, use:
+Similarly, to run a backupserver for each peer in the cluster, use:
 
     # seq 1 3 | while read peer; do node --abort-on-uncaught-exception \
         backupserver.js -f devconfs/sitter$peer/backupserver.json \

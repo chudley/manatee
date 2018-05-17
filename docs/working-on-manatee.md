@@ -13,7 +13,7 @@ This process involves:
 * Creating a ZFS dataset for each Manatee peer you want to run.  (We'll assume
   three instances in this guide.)
 * Creating a configuration file for each Manatee peer you want to run.
-* Starting each peer by hand.
+* Starting the cluster.
 
 
 ## Summary
@@ -27,7 +27,8 @@ Triton's `binder` instance.
 
 The following steps should run as roon inside a SmartOS zone provisioned onto
 the multiarch 13.3.1 image (image_uuid=4aec529c-55f9-11e3-868e-a37707fcbe86).
-This zone will also need to be provisioned with a delegated dataset.
+This zone will also need to be provisioned with a delegated dataset.  See
+"Provisioning a development zone" for an example.
 
 1. Install packages:
 
@@ -81,13 +82,39 @@ zone based on that image, deployed on a network with a ZooKeeper instance
 running.  On Triton, be sure to set `delegate_dataset=true` when provisioning.  On
 standalone SmartOS, set `delegate_dataset=true` when you invoke "vmadm create".
 
+An example of using Triton to provision this zone (run from and provisioned to
+the headnode):
+
+    # sdc-vmapi /vms -X POST -d '{
+        "owner_uuid": "'$(sdc-useradm get admin | json uuid)'",
+        "server_uuid": "'$(sysinfo | json UUID)'",
+        "image_uuid": "4aec529c-55f9-11e3-868e-a37707fcbe86",
+        "networks": [ {
+            "ipv4_uuid": "'$(sdc-napi /networks?name=external | json -H 0.uuid)'",
+            "primary": true
+        }, {
+            "ipv4_uuid": "'$(sdc-napi /networks?name=admin | json -H 0.uuid)'"
+        } ],
+        "brand": "joyent",
+        "ram": 2048,
+        "delegate_dataset": true }'
+
+If you don't have the image installed, you can run the following (again, from
+the headnode):
+
+    # sdc-imgadm import 4aec529c-55f9-11e3-868e-a37707fcbe86 \
+        -S https://updates.joyent.com
+
+Once this zone is provisioned you can `zlogin` to the resulting zone and
+continue with setting up Manatee.
+
 ### Installing packages/dependencies
 
 You'll need git, GNU make, a compiler toolchain, and some libraries that are
 required for building PostgreSQL.  On the above multiarch SmartOS zone, you can
 install these with:
 
-        # pkgin in git gmake gcc47 bison flex
+    # pkgin in git gmake gcc47 bison flex
 
 PostgreSQL is built from source, which we pull down as a submodule and checkout
 at a certain commit to define the version.  Once built in a temporary location,
@@ -99,13 +126,13 @@ PostgreSQL directly.
 Checkout is done like so:
 
     # git submodule add https://github.com/postgres/postgres.git \
-          deps/postgresql96 && cd deps/postgresql96 && \
-          git checkout ca9cfe && cd -
+        deps/postgresql96 && cd deps/postgresql96 && \
+        git checkout ca9cfe && cd -
 
 Building PostgreSQL like so:
 
     # make -f Makefile.postgres RELSTAGEDIR=/tmp/test \
-          DEPSDIR=/root/manatee/deps pg96
+        DEPSDIR=/root/manatee/deps pg96
 
 And installing like so:
 
@@ -178,8 +205,8 @@ replication for new downstream peers).  The following is an example of starting
 a Manatee peer and ensuring its output is directed to a file:
 
     # seq 1 3 | while read peer; do node --abort-on-uncaught-exception \
-          sitter.js -vvv -f devconfs/sitter$peer/sitter.json \
-          > /var/tmp/sitter$peer.log 2>&1 & done
+        sitter.js -vvv -f devconfs/sitter$peer/sitter.json \
+        > /var/tmp/sitter$peer.log 2>&1 & done
 
 Be sure to run this as root.  Logs can be tailed under `/var/tmp/sitter*.log`.  To
 kill all running instances of sitter and postgres, run:
@@ -193,8 +220,8 @@ ensure that PostgreSQL is also stopped when sitter is.  If in doubt,
 Similarly, to run the backupserver, use:
 
     # seq 1 3 | while read peer; do node --abort-on-uncaught-exception \
-          backupserver.js -f devconfs/sitter$peer/backupserver.json \
-          > /var/tmp/backupserver$peer.log >2&1 & done
+        backupserver.js -f devconfs/sitter$peer/backupserver.json \
+        > /var/tmp/backupserver$peer.log 2>&1 & done
 
 ### Clearing the cluster
 

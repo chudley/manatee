@@ -154,7 +154,7 @@ function ensurepostgres {
                 >> "$mds_pgbuilddir/build.log" 2>&1
         fi
     done
-    cp -R /tmp/pgbuild/root/opt/postgresql /opt/.
+    cp -R "$mds_pgbuilddir/root/opt/postgresql" /opt/.
 }
 
 if ! type zonename > /dev/null 2>&1; then

@@ -195,8 +195,7 @@ function mkconfig(template, params)
     datadir = util.format('%s/data', mountpoint);
     cookie = util.format('/var/tmp/manatee%s_sync_cookie', which);
     pgconf = util.format('%s/sitter%s/postgres.conf', params.root, which);
-    pgconfdir = util.format('%s/sitter%s', params.root,
-        which);
+    pgconfdir = util.format('%s/sitter%s', params.root, which);
     dataconfig = util.format('%s/manatee-config.json', mountpoint);
 
     /*

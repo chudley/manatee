@@ -78,8 +78,10 @@ function mksitter
 
 	echo -n "peer $which: creating configuration ... "
 	$mds_mksitterconfig "$PWD/devconfs" "$ip" "$zkconnstr" "$which" \
-	    "$shard" "$pgversion" > "$sitterdir/sitter.json" || fail "failed"
-	echo "{}" > "$sitterdir/pg_overrides.json" || fail "failed"
+	    "$shard" "$pgversion" > "$sitterdir/sitter.json" || \
+	    fail "failed to generate sitter config"
+	echo "{}" > "$sitterdir/pg_overrides.json" || \
+	    fail "failed to write pg_overrides.json"
 	echo "done."
 
 	echo -n "peer $which: fetching port from generated config ... "
@@ -89,7 +91,8 @@ function mksitter
 
 	echo -n "peer $which: creating template postgresql.conf ... "
 	egrep -v '^\s*port\s*=' "$mds_basedir/etc/postgresql.conf" |
-	    egrep -v '^\s*log_directory\s*=' > "$sitterdir/9.6/postgresql.conf"
+	    egrep -v '^\s*log_directory\s*=' > \
+	    "$sitterdir/$pgversion/postgresql.conf"
 	echo "port = $port # (change requires restart)" >> \
 	    "$sitterdir/$pgversion/postgresql.conf"
 	echo "log_directory = '$sitterdir/log'" >> \

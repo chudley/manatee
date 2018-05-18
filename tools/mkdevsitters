@@ -6,7 +6,7 @@
 #
 
 mds_arg0="$(basename ${BASH_SOURCE[0]})"
-mds_zonename=
+mds_zonename="$(zonename)"
 mds_basedir="$(dirname ${BASH_SOURCE[0]})/.."
 mds_mksitterconfig="$mds_basedir/tools/mksitterconfig"
 declare -A mds_pgsupported
@@ -36,7 +36,7 @@ function mksitter
 	ip="$2"
 	zkconnstr="$3"
 	shard="$4"
-        pgversion="$5"
+	pgversion="$5"
 	dataset="zones/$mds_zonename/data/peer$which"
 	sitterdir="$PWD/devconfs/sitter$which"
 	mountpoint="$PWD/devconfs/datasets/manatee$which"
@@ -112,49 +112,51 @@ function mksitter
 	echo "done."
 }
 
+# a fair amount of this function is making naive assumptions, but for
+# development purposes it's likely enough
 function ensurepostgres {
-    local vshort
+	local vshort pgdir
 
-    if ! json -f package.json > /dev/null 2>&1; then
-        fail "must be in manatee project directory"
-    fi
+	if ! json -f package.json > /dev/null 2>&1; then
+		fail "must be in manatee project directory"
+	fi
 
-    if ! ls .git > /dev/null 2>&1; then
-        fail "pwd doesn't appear to be a git repository"
-    fi
+	if ! ls .git > /dev/null 2>&1; then
+		fail "pwd doesn't appear to be a git repository"
+	fi
 
-    # Best effort attempt at creating postgres user and group.  It is assumed
-    # that if these fail then the user/group already exists, but there's a good
-    # chance they could fail for other reasons.  For development usage this is
-    # probably enough
-    groupadd -g 907 postgres > /dev/null 2>&1
-    useradd -u 907 -g postgres postgres > /dev/null 2>&1
+	groupadd -g 907 postgres > /dev/null 2>&1
+	useradd -u 907 -g postgres postgres > /dev/null 2>&1
 
-    if ! grep ^postgres /opt/local/etc/sudoers > /dev/null 2>&1; then
-        echo "postgres    ALL=(ALL) NOPASSWD: /usr/bin/chown, /usr/bin/chmod, \
-            /opt/local/bin/chown, /opt/local/bin/chmod" \
-            >> /opt/local/etc/sudoers
-    fi
+	if ! grep ^postgres /opt/local/etc/sudoers > /dev/null 2>&1; then
+	echo "postgres    ALL=(ALL) NOPASSWD: /usr/bin/chown, /usr/bin/chmod," \
+	    "/opt/local/bin/chown, /opt/local/bin/chmod" \
+	    >> /opt/local/etc/sudoers
+	fi
 
-    echo "ensuring supported postgres versions are checked out and installed"
-    git submodule add https://github.com/reorg/pg_repack.git deps/pg_repack
-    for version in ${!mds_pgsupported[@]}; do
-        vshort=$(echo "$version" | sed 's/\.//')
-        git submodule add https://github.com/postgres/postgres.git \
-            "deps/postgresql$vshort"
-        cd "deps/postgresql$vshort"
-        git checkout "${mds_pgsupported[$version]}"
-        cd - > /dev/null 2>&1
-        if ! ls "$mds_pgbuilddir/root/opt/postgresql/$version"*"/bin/postgres" \
-            > /dev/null 2>&1; then
-            echo "building postgres $version (log at $mds_pgbuilddir/build.log)"
-            mkdir -p "$mds_pgbuilddir"
-            make -f Makefile.postgres RELSTAGEDIR="$mds_pgbuilddir" \
-                DEPSDIR="$PWD/deps" "pg$vshort" \
-                >> "$mds_pgbuilddir/build.log" 2>&1
-        fi
-    done
-    cp -R "$mds_pgbuilddir/root/opt/postgresql" /opt/.
+	echo "ensuring supported postgres versions are installed"
+	git submodule add https://github.com/reorg/pg_repack.git deps/pg_repack
+	for version in ${!mds_pgsupported[@]}; do
+		vshort=$(echo "$version" | sed 's/\.//')
+		pgdir="$mds_pgbuilddir/root/opt/postgresql/"
+
+		git submodule add https://github.com/postgres/postgres.git \
+		    "deps/postgresql$vshort"
+		cd "deps/postgresql$vshort"
+		git checkout "${mds_pgsupported[$version]}"
+		cd - > /dev/null 2>&1
+
+		if ! ls "$pgdir/$version"*"/bin/postgres" > /dev/null 2>&1; then
+			echo "building postgres $version" \
+			    "(log at $mds_pgbuilddir/build.log)"
+			mkdir -p "$mds_pgbuilddir"
+			make -f Makefile.postgres \
+			    RELSTAGEDIR="$mds_pgbuilddir" \
+			    DEPSDIR="$PWD/deps" "pg$vshort" \
+			    >> "$mds_pgbuilddir/build.log" 2>&1
+		fi
+	done
+	cp -R "$mds_pgbuilddir/root/opt/postgresql" /opt/.
 }
 
 if ! type zonename > /dev/null 2>&1; then
@@ -167,15 +169,15 @@ if [[ $# -lt 3 ]]; then
 fi
 
 if [[ -z "$mds_pgversion" ]]; then
-    mds_pgversion="9.6"
+	mds_pgversion="9.6"
 fi
 
-if [[ ! "${!mds_pgsupported[@]}" =~ "${mds_pgversion}" ]]; then
-    fail "supported version are \"9.2\" or \"9.6\""
+if [[ ! "${!mds_pgsupported[@]}" =~ "$mds_pgversion" ]]; then
+	fail "supported version are \"9.2\" or \"9.6\""
 fi
 
 ensurepostgres
-mds_zonename="$(zonename)"
+
 for (( i = 1; i <= 3; i++ )) {
 	mksitter $i "$mds_ip" "$mds_zkconnstr" "$mds_shard" "$mds_pgversion"
 }

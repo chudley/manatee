@@ -38,7 +38,6 @@ This zone will also need to be provisioned with a delegated dataset.  See
 
         # git clone https://github.com/joyent/manatee
         # cd manatee
-        # # checkout an applicable branch if appropriate
         # make
 
 1. Get the following details about the cluster:

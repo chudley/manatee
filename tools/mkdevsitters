@@ -113,6 +113,13 @@ function mksitter
 	script="$script this.backupServerCfg.port = $port;"
 	echo "{}" | json -e "$script" > "$sitterdir/backupserver.json"
 	echo "done."
+
+	echo -n "peer $which: creating snapshotter config ... "
+	script="this.dataset = '$dataset';"
+	script="$script this.pollInterval = 36000;"
+	script="$script this.snapshotNumber = 20;"
+	echo "{}" | json -e "$script" > "$sitterdir/snapshotter.json"
+	echo "done."
 }
 
 # a fair amount of this function is making naive assumptions, but for

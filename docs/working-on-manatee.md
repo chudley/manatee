@@ -198,10 +198,12 @@ the first peer runs postgres on port 5432, the second peer runs postgres on port
 
 ### Running the cluster
 
-There are currently two components to run for each peer: the sitter (which also
-starts postgres) and the backup server (which is used for bootstrapping
-replication for new downstream peers).  The following is an example of starting
-the cluster and ensuring each peer's output is directed to a file:
+There are currently three components to run for each peer: the sitter (which
+also starts postgres), the backup server (which is used for bootstrapping
+replication for new downstream peers), and the snapshotter (which is responsible
+for keeping a rotation of snapshots available on the peer's delegated dataset).
+The following is an example of starting the cluster and ensuring each peer's
+output is directed to a file:
 
     # seq 1 3 | while read peer; do node --abort-on-uncaught-exception \
         sitter.js -vvv -f devconfs/sitter$peer/sitter.json \
@@ -221,6 +223,12 @@ Similarly, to run a backupserver for each peer in the cluster, use:
     # seq 1 3 | while read peer; do node --abort-on-uncaught-exception \
         backupserver.js -f devconfs/sitter$peer/backupserver.json \
         > /var/tmp/backupserver$peer.log 2>&1 & done
+
+Running a snapshotter process for each peer in the cluster can be done like so:
+
+    # seq 1 3 | while read peer; do node --abort-on-uncaught-exception \
+        snapshotter.js -f devconfs/sitter$peer/snapshotter.json \
+        > /var/tmp/snapshotter$peer.log 2>&1 & done
 
 ### Clearing the cluster
 
@@ -247,3 +255,11 @@ following commands:
     name again in a new cluster.
 
             # zkCli.sh rmr /manatee/testing123
+
+### Running tests
+
+Before you can run a clean `make prepush`, you will need to set these
+environmental variables:
+
+    # export SHARD=1.moray.$YOUR_LAB_OR_VM.joyent.us
+    # export ZK_IPS=$NAMESERVICE_INSTANCE_IP

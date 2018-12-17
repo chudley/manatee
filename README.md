@@ -5,7 +5,7 @@
 -->
 
 <!--
-    Copyright (c) 2014, Joyent, Inc.
+    Copyright (c) 2018, Joyent, Inc.
 -->
 
 # Manatee
@@ -87,4 +87,3 @@ client.on('error', function (err) {
     console.error({err: err}, 'got client error');
 });
 ```
-

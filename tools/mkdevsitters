@@ -41,22 +41,10 @@ function mksitter
 	sitterdir="$PWD/devconfs/sitter$which"
 	mountpoint="$PWD/devconfs/datasets/manatee$which"
 
-	echo -n "peer $which: creating ZFS dataset ... "
-	if ! zfs create -o mountpoint=$mountpoint -o canmount=noauto \
-	    $dataset; then
-		fail "failed to create dataset \"$dataset\""
-	fi
-
+	echo -n "peer $which: creating dataset mountpoint ..."
 	if ! mkdir -p $mountpoint ||
 	   ! chown postgres $mountpoint ||
-	   ! chmod 700 $mountpoint ||
-	   ! zfs mount $dataset; then
-		fail "failed to create, chown, chmod, or mount \"$mountpoint\""
-	fi
-
-	if ! mkdir -p $mountpoint/data ||
-	   ! chown postgres $mountpoint/data ||
-	   ! chmod 700 $mountpoint/data; then
+	   ! chmod 700 $mountpoint; then
 		fail "failed to create, chown, or chmod \"$mountpoint\""
 	fi
 

@@ -2,7 +2,8 @@
 
 When working on Manatee, it's convenient to be able to run multiple instances in
 the same environment.  This won't allow you to test all possible failure modes,
-but it works for most basic functionality.
+but it works for most basic functionality.  Known limitations of this method are
+documented in the "Limitations" section.
 
 This process involves:
 
@@ -255,6 +256,44 @@ following commands:
     name again in a new cluster.
 
             # zkCli.sh rmr /manatee/testing123
+
+### Limitations
+
+One limitation of running Manatee in this way is *rebuilds*.  The
+`manatee-adm rebuild` command requires that the Manatee instance you're
+rebuilding is running under SMF and is uniquely identifiable with the partial
+FMRI match of "manatee-sitter".  This is true of the images that are built for
+Triton and Manta's purposes, but this is not the case when the
+development-specific procedure in this document has been followed.  As such, it
+is not possible to use the `manatee-adm rebuild` command to rebuild a peer.
+
+To work around this it's possible to manually perform the steps of a rebuild
+against a specific member of this test cluster.  The steps are (in this example
+for peer 1):
+
+1. Stop the peer:
+
+        # pkill -9 -P $(pgrep -f "1\/sitter")
+
+1. Delete the dataset:
+
+        # zfs destroy -r zones/$(zonename)/data/peer1
+
+1. If applicable (i.e. the peer is in the "deposed" state), reap the peer:
+
+        # ./bin/manatee-adm reap -c devconfs/sitter1/sitter.json
+
+1. Start the peer:
+
+        # node --abort-on-uncaught-exception sitter.js -vvv \
+	    -f devconfs/sitter1/sitter.json > /var/tmp/sitter1.log 2>&1 &
+
+From this point the peer should begin the process of restoring a copy of the
+dataset from the appropriate upstream peer.
+
+Note: This process completely destroys the data for this peer, and does not
+perform the dataset isolation steps usually performed by the
+`manatee-adm rebuild` command.
 
 ### Running tests
 

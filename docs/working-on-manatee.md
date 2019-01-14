@@ -286,7 +286,7 @@ for peer 1):
 1. Start the peer:
 
         # node --abort-on-uncaught-exception sitter.js -vvv \
-	    -f devconfs/sitter1/sitter.json > /var/tmp/sitter1.log 2>&1 &
+            -f devconfs/sitter1/sitter.json > /var/tmp/sitter1.log 2>&1 &
 
 From this point the peer should begin the process of restoring a copy of the
 dataset from the appropriate upstream peer.

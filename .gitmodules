@@ -11,3 +11,27 @@
 [submodule "deps/json"]
 	path = deps/json
 	url = https://github.com/trentm/json.git
+[submodule "deps/eng"]
+	path = deps/eng
+	url = https://github.com/joyent/eng.git
+[submodule "deps/manta-scripts"]
+	path = deps/manta-scripts
+	url = https://github.com/joyent/manta-scripts.git
+[submodule "deps/sdc-scripts"]
+	path = deps/sdc-scripts
+	url = https://github.com/joyent/sdc-scripts.git
+[submodule "deps/pg_prefaulter"]
+	path = deps/pg_prefaulter
+	url = https://github.com/joyent/pg_prefaulter.git
+[submodule "deps/pg_repack"]
+	path = deps/pg_repack
+	url = https://github.com/reorg/pg_repack.git
+[submodule "deps/postgresql12"]
+	path = deps/postgresql12
+	url = https://github.com/postgres/postgres.git
+[submodule "deps/postgresql92"]
+	path = deps/postgresql92
+	url = https://github.com/postgres/postgres.git
+[submodule "deps/postgresql96"]
+	path = deps/postgresql96
+	url = https://github.com/joyent/postgres.git

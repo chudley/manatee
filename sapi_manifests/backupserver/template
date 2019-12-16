@@ -1,0 +1,10 @@
+{
+  "backupServerCfg": {
+    "port": 12345
+  },
+  "backupSenderCfg": {
+    "zfsPath": "/usr/sbin/zfs",
+    "dataset": "zones/{{auto.ZONENAME}}/data/manatee",
+    "snapshotDir": "/manatee/pg/.zfs/snapshot/"
+  }
+}

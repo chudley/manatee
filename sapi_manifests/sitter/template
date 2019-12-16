@@ -1,0 +1,65 @@
+{
+    "backupPort": 12345,
+    "postgresPort": 5432,
+    "shardPath": "{{MANATEE_SHARD_PATH}}",
+    "ttl": 60,
+    "ip": "{{auto.MANTA_IP}}",
+    "zoneId": "{{auto.ZONENAME}}",
+    "postgresMgrCfg": {
+        "dataDir": "{{PG_DIR}}",
+        "dataConfig": "{{PG_DIR}}/../manatee-config.json",
+{{#PG_DEFAULT_VERSION}}
+        "defaultVersion": "{{PG_DEFAULT_VERSION}}",
+{{/PG_DEFAULT_VERSION}}
+{{^PG_DEFAULT_VERSION}}
+        "defaultVersion": "9.2",
+{{/PG_DEFAULT_VERSION}}
+        "pgBaseDir": "/opt/postgresql/",
+        "dbUser": "postgres",
+        "healthChkInterval": 10000,
+        "healthChkTimeout": 60000,
+        "oneNodeWriteMode": false,
+        "opsTimeout": 300000,
+        "pgConnectTimeout": 60,
+        "postgresConfDir": "/opt/smartdc/manatee/etc/",
+        "postgresConfFile": "postgresql.manta.{{SIZE}}.conf",
+        "recoveryConfFile": "recovery.conf",
+        "hbaConfFile": "pg_hba.conf",
+        "replicationTimeout": 60000,
+        "versions": {
+            "9.2": "9.2.4",
+            "9.6": "9.6.3",
+            "12": "12.0"
+        },
+        "snapShotterCfg": {
+            "dataset": "zones/{{auto.ZONENAME}}/data/manatee",
+            "snapshotDir": "/manatee/pg/.zfs/snapshot/",
+            "pollInterval": 5000,
+            "snapshotNumber": 5,
+            "pgUrl": "tcp://postgres@{{auto.MANTA_IP}}:5432/postgres"
+        },
+        "syncStateCheckerCfg": {
+            "interval": 1000,
+            "cookieLocation": "/var/tmp/manatee_sync_state"
+        },
+        "url": "tcp://postgres@{{auto.MANTA_IP}}:5432/postgres",
+        "zfsClientCfg": {
+            "dataset": "zones/{{auto.ZONENAME}}/data/manatee",
+            "parentDataset": "zones/{{auto.ZONENAME}}/data",
+            "snapshotDir": "/manatee/pg/.zfs/snapshot/",
+            "zfsHost": "{{auto.MANTA_IP}}",
+            "zfsPort": 1234,
+            "pollInterval": 1000,
+            "zfsPath": "/usr/sbin/zfs",
+            "mountpoint": "/manatee/pg"
+        }
+    },
+    "zkCfg": {
+        "connStr": "{{#ZK_SERVERS}}{{host}}:{{port}}{{^last}},{{/last}}{{/ZK_SERVERS}}",
+        "opts": {
+            "sessionTimeout": 60000,
+            "spinDelay": 1000,
+            "retries": 2
+        }
+    }
+}

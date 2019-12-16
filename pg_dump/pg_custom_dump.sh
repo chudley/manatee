@@ -6,7 +6,7 @@
 #
 
 #
-# Copyright (c) 2017, Joyent, Inc.
+# Copyright 2019 Joyent, Inc.
 #
 
 # Postgres backup script. This script takes a snapshot of the current postgres

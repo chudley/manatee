@@ -6,7 +6,7 @@
 #
 
 #
-# Copyright 2016 Joyent, Inc.
+# Copyright 2019 Joyent, Inc.
 #
 
 set -o errexit

@@ -27,6 +27,14 @@ SMF_MANIFESTS_IN =		smf/manifests/backupserver.xml.in \
 				smf/manifests/sitter.xml.in \
 				smf/manifests/snapshotter.xml.in \
 				smf/manifests/pg_prefaulter.xml.in
+BASH_FILES	 = tools/mkdevsitters
+JS_FILES	:= \
+	$(wildcard ./*.js ./lib/*.js ./test/*.js) \
+	bin/manatee-adm \
+	tools/mksitterconfig
+JSON_FILES	 = \
+	$(wildcard ./etc/*.json ./test/etc/*.json) \
+	package.json
 
 #
 # Variables
@@ -53,10 +61,16 @@ ENGBLD_USE_BUILDIMAGE =		true
 ENGBLD_REQUIRE :=		$(shell git submodule update --init deps/eng)
 include ./deps/eng/tools/mk/Makefile.defs
 TOP ?= $(error Unable to access eng.git submodule Makefiles.)
-
-include ./deps/eng/tools/mk/Makefile.go_prebuilt.defs
-include ./deps/eng/tools/mk/Makefile.node_prebuilt.defs
-include ./deps/eng/tools/mk/Makefile.agent_prebuilt.defs
+ifeq ($(shell uname -s),SunOS)
+        include ./deps/eng/tools/mk/Makefile.go_prebuilt.defs
+        include ./deps/eng/tools/mk/Makefile.node_prebuilt.defs
+        include ./deps/eng/tools/mk/Makefile.agent_prebuilt.defs
+else
+		NODE=node
+		NPM=npm
+		NODE_EXEC=$(shell which node)
+		NPM_EXEC=$(shell which npm)
+endif
 include ./deps/eng/tools/mk/Makefile.node_modules.defs
 include ./deps/eng/tools/mk/Makefile.smf.defs
 
@@ -144,9 +158,13 @@ $(PG_PREFAULTER): deps/pg_prefaulter/.git $(STAMP_GO_TOOLCHAIN)
 	    -o $@ $(PG_PREFAULTER_IMPORT)
 
 include ./deps/eng/tools/mk/Makefile.deps
-include ./deps/eng/tools/mk/Makefile.go_prebuilt.targ
-include ./deps/eng/tools/mk/Makefile.node_prebuilt.targ
-include ./deps/eng/tools/mk/Makefile.agent_prebuilt.targ
+ifeq ($(shell uname -s),SunOS)
+        include ./deps/eng/tools/mk/Makefile.go_prebuilt.targ
+        include ./deps/eng/tools/mk/Makefile.node_prebuilt.targ
+        include ./deps/eng/tools/mk/Makefile.agent_prebuilt.targ
+else
+        include ./deps/eng/tools/mk/Makefile.node.targ
+endif
 include ./deps/eng/tools/mk/Makefile.node_modules.targ
 include ./deps/eng/tools/mk/Makefile.smf.targ
 include ./deps/eng/tools/mk/Makefile.targ

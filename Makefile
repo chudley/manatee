@@ -90,6 +90,10 @@ release: all deps docs pg
 	@touch $(RELSTAGEDIR)/site/.do-not-delete-me
 	@mkdir -p $(RELSTAGEDIR)/root
 	cp -r \
+	    $(ROOT)/lib \
+	    $(ROOT)/sitter.js \
+	    $(ROOT)/backupserver.js \
+	    $(ROOT)/snapshotter.js \
 	    $(ROOT)/build \
 	    $(ROOT)/bin \
 	    $(ROOT)/node_modules \

@@ -29,7 +29,7 @@
             <service_fmri value="svc:/smartdc/application/config-agent" />
         </dependency>
 
-        <exec_method name='start' type='method' exec='/opt/smartdc/manatee/build/node/bin/node --abort-on-uncaught-exception ./node_modules/manatee/sitter.js -vvv -f etc/sitter.json &amp;' timeout_seconds='65'>
+        <exec_method name='start' type='method' exec='/opt/smartdc/manatee/build/node/bin/node --abort-on-uncaught-exception ./sitter.js -vvv -f etc/sitter.json &amp;' timeout_seconds='65'>
             <method_context working_directory='/opt/smartdc/manatee'>
                 <method_environment>
                     <envvar name='PATH' value='/opt/smartdc/manatee/build/node/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin'/>

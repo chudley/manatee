@@ -20,6 +20,9 @@ ifeq ($(UNAME), SunOS)
 	TAR = gtar
 endif
 
+JSL_CONF_NODE	 = ./tools/jsl.node.conf
+JSSTYLE_FLAGS	 = -f ./tools/jsstyle.conf
+
 #
 # Files
 #
@@ -35,6 +38,9 @@ JS_FILES	:= \
 JSON_FILES	 = \
 	$(wildcard ./etc/*.json ./test/etc/*.json) \
 	package.json
+JSL_FILES_NODE	 = $(JS_FILES)
+JSSTYLE_FILES	 = $(JS_FILES)
+
 
 #
 # Variables

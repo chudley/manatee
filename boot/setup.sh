@@ -27,6 +27,11 @@ export PATH=$SVC_ROOT/build/node/bin:/opt/local/bin:/usr/sbin/:/usr/bin:$PATH
 # Install zookeeper package, need to touch this file to disable the license prompt
 touch /opt/local/.dli_license_accepted
 
+if [[ -n $(mdata-get sdc:tags.manta_role) ]]; then
+    export FLAVOR="manta"
+else
+    export FLAVOR="sdc"
+fi
 
 function manta_manatee_setup {
     echo "Running common setup scripts"
@@ -73,15 +78,18 @@ function common_enable_services {
 
     svccfg import /opt/smartdc/manatee/smf/manifests/sitter.xml
 
-    # With Manta we *always* want sitter.
-    echo "Starting sitter"
-    svcadm enable manatee-sitter
+    if [[ ${FLAVOR} == "manta" ]]; then
+        # With Manta we *always* want sitter.
+        echo "Starting sitter"
+        svcadm enable manatee-sitter
 
-    #
-    # Import the PostgreSQL prefaulter service.
-    #
-    echo "Starting prefaulter"
-    svccfg import /opt/smartdc/manatee/smf/manifests/pg_prefaulter.xml
+        #
+        # Import the PostgreSQL prefaulter service.
+        #
+        echo "Starting prefaulter"
+        svccfg import /opt/smartdc/manatee/smf/manifests/pg_prefaulter.xml
+    fi
+    # For SDC we'll let configure decide if it wants to enable sitter or not.
 
     echo "Starting waferlock"
     svccfg import /opt/smartdc/waferlock/smf/manifests/waferlock.xml
@@ -122,7 +130,22 @@ function common_manatee_setup {
 }
 
 function add_manatee_profile_functions {
-    ZK_IPS=$(json -f ${METADATA} ZK_SERVERS | json -a host)
+    if [[ ${FLAVOR} == "manta" ]]; then
+        ZK_IPS=$(json -f ${METADATA} ZK_SERVERS | json -a host)
+    else
+        ZK_IPS=${BINDER_ADMIN_IPS}
+
+        # .bashrc
+        #
+        # - An external promise to sdcadm (e.g. `sdcadm post-setup ha-binder`) is
+        #   that the following works:
+        #       zlogin $manateeUuid 'source ~/.bashrc; manatee-adm state'
+        #   this requires having both "manatee-adm" and ".../build/node/bin/node"
+        #   on the PATH.
+        #
+        echo "export PATH=\$PATH:/opt/smartdc/manatee/bin/:/opt/smartdc/manatee/pg_dump/:/opt/smartdc/manatee/build/node/bin:/opt/smartdc/manatee/node_modules/manatee/bin:/opt/postgresql/current/bin" >> /root/.bashrc
+        echo "export MANPATH=\$MANPATH:/opt/smartdc/manatee/node_modules/manatee/man" >> /root/.bashrc
+    fi
 
     # get correct ZK_IPS
     echo "source /opt/smartdc/etc/zk_ips.sh" >> $PROFILE
@@ -175,11 +198,68 @@ function manta_setup_manatee_env {
     manta_add_logadm_entry "pgdump" "/var/log/manatee"
 }
 
+function sdc_manatee_setup {
+    # vars used by manatee-* tools
+    ZONE_UUID=$(json -f /var/tmp/metadata.json ZONE_UUID)
+    PARENT_DATASET=zones/$ZONE_UUID/data
+    PG_LOG_DIR=/var/pg
+    BINDER_ADMIN_IPS=$(json -f /var/tmp/metadata.json binder_admin_ips)
 
-source ${DIR}/scripts/util.sh
-source ${DIR}/scripts/services.sh
+    # Cookie to identify this as a SmartDC zone and its role
+    mkdir -p /var/smartdc/$role
+    mkdir -p /opt/smartdc/$role/ssl
 
-manta_manatee_setup
-add_manatee_profile_functions
+    #echo "Installing local node.js"
+    mkdir -p /opt/smartdc/$role/etc
+    /usr/bin/chown -R root:root /opt/smartdc
+
+    #cron
+    mkdir -p /var/log/manatee/
+    local crontab=/tmp/.sdc_manatee_cron
+    crontab -l > $crontab
+
+    echo "0 0 * * * /opt/smartdc/manatee/pg_dump/pg_dump.sh >> /var/log/manatee/pgdump.log 2>&1" >> $crontab
+    [[ $? -eq 0 ]] || fatal "Unable to write to $crontab"
+    crontab $crontab
+    [[ $? -eq 0 ]] || fatal "Unable import crons"
+
+    # rotate pgdump logs
+    sdc_log_rotation_add pgdump /var/log/manatee/pgdump.log 1g
+
+    common_manatee_setup
+
+    common_enable_services
+}
+
+
+if [[ ${FLAVOR} == "manta" ]]; then
+    source ${DIR}/scripts/util.sh
+    source ${DIR}/scripts/services.sh
+
+    manta_manatee_setup
+    add_manatee_profile_functions
+else # FLAVOR == "sdc"
+    # Local manifests
+    CONFIG_AGENT_LOCAL_MANIFESTS_DIRS="/opt/smartdc/$role /opt/smartdc/waferlock"
+
+    # Include common utility functions (then run the boilerplate)
+    source /opt/smartdc/boot/lib/util.sh
+    sdc_common_setup
+
+    # Do the SDC-specific manatee stuff.
+    sdc_manatee_setup
+    add_manatee_profile_functions
+
+    # add log rotation
+    sdc_log_rotation_add manatee-sitter /var/svc/log/*manatee-sitter*.log 1g
+    sdc_log_rotation_add manatee-snapshotter /var/svc/log/*manatee-snapshotter*.log 1g
+    sdc_log_rotation_add manatee-backupserver /var/svc/log/*manatee-backupserver*.log 1g
+    sdc_log_rotation_add waferlock /var/svc/log/*waferlock*.log 1g
+    sdc_log_rotation_add manatee-postgres /var/pg/postgresql.log 1g
+    sdc_log_rotation_setup_end
+
+    # All done, run boilerplate end-of-setup
+    sdc_setup_complete
+fi
 
 exit 0

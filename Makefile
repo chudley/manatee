@@ -119,7 +119,7 @@ publish: release
 .PHONY: pg
 pg: all deps/postgresql92/.git deps/postgresql96/.git deps/postgresql12/.git \
     deps/pg_repack/.git
-	$(MAKE) -C node_modules/manatee -f Makefile.postgres \
+	$(MAKE) -f Makefile.postgres \
 	    RELSTAGEDIR="$(RELSTAGEDIR)" \
 	    DEPSDIR="$(ROOT)/deps"
 

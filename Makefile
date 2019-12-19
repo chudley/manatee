@@ -126,6 +126,7 @@ release: all deps docs pg
 	cp $(PG_PREFAULTER) $(RELSTAGEDIR)/root/opt/smartdc/manatee/bin/
 	cp -r $(ROOT)/deps/manta-scripts \
 	    $(RELSTAGEDIR)/root/opt/smartdc/manatee/deps
+	cp -r $(ROOT)/deps/sdc-scripts/* $(RELSTAGEDIR)/root/opt/smartdc/boot/
 	mkdir -p $(RELSTAGEDIR)/root/opt/smartdc/boot/scripts
 	cp -R $(RELSTAGEDIR)/root/opt/smartdc/manatee/build/scripts/* \
 	    $(RELSTAGEDIR)/root/opt/smartdc/boot/scripts/

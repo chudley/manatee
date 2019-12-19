@@ -1,13 +1,14 @@
 {
     "backupPort": 12345,
     "postgresPort": 5432,
-    "shardPath": "{{MANATEE_SHARD_PATH}}",
+    "//Manta refers to the full shard path in the first comparison here, but Triton refers to just the shard name." : "",
+    "shardPath": "{{#MANATEE_SHARD_PATH}}{{MANATEE_SHARD_PATH}}{{/MANATEE_SHARD_PATH}}{{^MANATEE_SHARD_PATH}}/manatee/{{manatee_shard}}{{/MANATEE_SHARD_PATH}}",
     "ttl": 60,
-    "ip": "{{auto.MANTA_IP}}",
+    "ip": "{{#auto.MANTA_IP}}{{auto.MANTA_IP}}{{/auto.MANTA_IP}}{{^auto.MANTA_IP}}{{auto.PRIMARY_IP}}{{/auto.MANTA_IP}}",
     "zoneId": "{{auto.ZONENAME}}",
     "postgresMgrCfg": {
-        "dataDir": "{{PG_DIR}}",
-        "dataConfig": "{{PG_DIR}}/../manatee-config.json",
+        "dataDir": "{{^PG_DIR}}/manatee/pg/data{{/PG_DIR}}{{PG_DIR}}",
+        "dataConfig": "{{#PG_DIR}}{{PG_DIR}}/..{{/PG_DIR}}{{^PG_DIR}}/manatee/pg{{/PG_DIR}}/manatee-config.json",
 {{#PG_DEFAULT_VERSION}}
         "defaultVersion": "{{PG_DEFAULT_VERSION}}",
 {{/PG_DEFAULT_VERSION}}
@@ -18,11 +19,12 @@
         "dbUser": "postgres",
         "healthChkInterval": 10000,
         "healthChkTimeout": 60000,
-        "oneNodeWriteMode": false,
+        "oneNodeWriteMode": {{^ONE_NODE_WRITE_MODE}}false{{/ONE_NODE_WRITE_MODE}}{{{ONE_NODE_WRITE_MODE}}},
         "opsTimeout": 300000,
         "pgConnectTimeout": 60,
         "postgresConfDir": "/opt/smartdc/manatee/etc/",
-        "postgresConfFile": "postgresql.manta.{{SIZE}}.conf",
+        "//Manta has a SIZE, but Triton does not.": "",
+        "postgresConfFile": "postgresql.{{#SIZE}}manta.{{SIZE}}{{/SIZE}}{{^SIZE}}sdc{{/SIZE}}.conf",
         "recoveryConfFile": "recovery.conf",
         "hbaConfFile": "pg_hba.conf",
         "replicationTimeout": 60000,
@@ -36,18 +38,18 @@
             "snapshotDir": "/manatee/pg/.zfs/snapshot/",
             "pollInterval": 5000,
             "snapshotNumber": 5,
-            "pgUrl": "tcp://postgres@{{auto.MANTA_IP}}:5432/postgres"
+            "pgUrl": "tcp://postgres@{{#auto.MANTA_IP}}{{auto.MANTA_IP}}{{/auto.MANTA_IP}}{{^auto.MANTA_IP}}{{auto.PRIMARY_IP}}{{/auto.MANTA_IP}}:5432/postgres"
         },
         "syncStateCheckerCfg": {
             "interval": 1000,
             "cookieLocation": "/var/tmp/manatee_sync_state"
         },
-        "url": "tcp://postgres@{{auto.MANTA_IP}}:5432/postgres",
+        "url": "tcp://postgres@{{#auto.MANTA_IP}}{{auto.MANTA_IP}}{{/auto.MANTA_IP}}{{^auto.MANTA_IP}}{{auto.PRIMARY_IP}}{{/auto.MANTA_IP}}:5432/postgres",
         "zfsClientCfg": {
             "dataset": "zones/{{auto.ZONENAME}}/data/manatee",
             "parentDataset": "zones/{{auto.ZONENAME}}/data",
             "snapshotDir": "/manatee/pg/.zfs/snapshot/",
-            "zfsHost": "{{auto.MANTA_IP}}",
+            "zfsHost": "{{#auto.MANTA_IP}}{{auto.MANTA_IP}}{{/auto.MANTA_IP}}{{^auto.MANTA_IP}}{{auto.PRIMARY_IP}}{{/auto.MANTA_IP}}",
             "zfsPort": 1234,
             "pollInterval": 1000,
             "zfsPath": "/usr/sbin/zfs",
@@ -55,11 +57,12 @@
         }
     },
     "zkCfg": {
-        "connStr": "{{#ZK_SERVERS}}{{host}}:{{port}}{{^last}},{{/last}}{{/ZK_SERVERS}}",
+        "connStr": "{{#ZK_HA_SERVERS}}{{host}}:{{port}}{{^last}},{{/last}}{{/ZK_HA_SERVERS}}{{^ZK_HA_SERVERS}}{{#ZK_SERVERS}}{{host}}:{{port}}{{^last}},{{/last}}{{/ZK_SERVERS}}{{/ZK_HA_SERVERS}}",
         "opts": {
             "sessionTimeout": 60000,
             "spinDelay": 1000,
             "retries": 2
         }
-    }
+    },
+    "disableSitter": {{^DISABLE_SITTER}}false{{/DISABLE_SITTER}}{{{DISABLE_SITTER}}}
 }

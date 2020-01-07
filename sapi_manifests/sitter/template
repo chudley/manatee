@@ -1,30 +1,31 @@
 {
     "backupPort": 12345,
     "postgresPort": 5432,
-    "//Manta refers to the full shard path in the first comparison here, but Triton refers to just the shard name." : "",
-    "shardPath": "{{#MANATEE_SHARD_PATH}}{{MANATEE_SHARD_PATH}}{{/MANATEE_SHARD_PATH}}{{^MANATEE_SHARD_PATH}}/manatee/{{manatee_shard}}{{/MANATEE_SHARD_PATH}}",
     "ttl": 60,
-    "ip": "{{#auto.MANTA_IP}}{{auto.MANTA_IP}}{{/auto.MANTA_IP}}{{^auto.MANTA_IP}}{{auto.PRIMARY_IP}}{{/auto.MANTA_IP}}",
     "zoneId": "{{auto.ZONENAME}}",
+
+    {{#MANATEE_SHARD_PATH}} {{! Manta }}
+        "shardPath": "{{MANATEE_SHARD_PATH}}",
+    {{/MANATEE_SHARD_PATH}}
+    {{#manatee_shard}} {{! Triton}}
+        "shardPath": "/manatee/{{manatee_shard}}",
+    {{/manatee_shard}}
+
+    {{#auto.MANTA_IP}} {{! Manta }}
+        "ip": "{{auto.MANTA_IP}}",
+    {{/auto.MANTA_IP}}
+    {{^auto.MANTA_IP}} {{! Triton }}
+        "ip": "{{auto.PRIMARY_IP}}",
+    {{/auto.MANTA_IP}}
+
     "postgresMgrCfg": {
-        "dataDir": "{{^PG_DIR}}/manatee/pg/data{{/PG_DIR}}{{PG_DIR}}",
-        "dataConfig": "{{#PG_DIR}}{{PG_DIR}}/..{{/PG_DIR}}{{^PG_DIR}}/manatee/pg{{/PG_DIR}}/manatee-config.json",
-{{#PG_DEFAULT_VERSION}}
-        "defaultVersion": "{{PG_DEFAULT_VERSION}}",
-{{/PG_DEFAULT_VERSION}}
-{{^PG_DEFAULT_VERSION}}
-        "defaultVersion": "9.2",
-{{/PG_DEFAULT_VERSION}}
         "pgBaseDir": "/opt/postgresql/",
         "dbUser": "postgres",
         "healthChkInterval": 10000,
         "healthChkTimeout": 60000,
-        "oneNodeWriteMode": {{^ONE_NODE_WRITE_MODE}}false{{/ONE_NODE_WRITE_MODE}}{{{ONE_NODE_WRITE_MODE}}},
         "opsTimeout": 300000,
         "pgConnectTimeout": 60,
         "postgresConfDir": "/opt/smartdc/manatee/etc/",
-        "//Manta has a SIZE, but Triton does not.": "",
-        "postgresConfFile": "postgresql.{{#SIZE}}manta.{{SIZE}}{{/SIZE}}{{^SIZE}}sdc{{/SIZE}}.conf",
         "recoveryConfFile": "recovery.conf",
         "hbaConfFile": "pg_hba.conf",
         "replicationTimeout": 60000,
@@ -33,36 +34,102 @@
             "9.6": "9.6.3",
             "12": "12.0"
         },
-        "snapShotterCfg": {
-            "dataset": "zones/{{auto.ZONENAME}}/data/manatee",
+
+        {{#PG_DIR}} {{! Manta }}
+            "dataDir": "{{PG_DIR}}",
+            "dataConfig": "{{PG_DIR}}/../manatee/pg/manatee-config.json",
+        {{/PG_DIR}}
+        {{^PG_DIR}} {{! Triton }}
+            "dataDir": "/manatee/pg/data",
+            "dataConfig": "/manatee/pg/manatee-config.json",
+        {{/PG_DIR}}
+
+        {{#PG_DEFAULT_VERSION}}
+            "defaultVersion": "{{PG_DEFAULT_VERSION}}",
+        {{/PG_DEFAULT_VERSION}}
+        {{^PG_DEFAULT_VERSION}}
+            "defaultVersion": "9.2",
+        {{/PG_DEFAULT_VERSION}}
+
+        {{#ONE_NODE_WRITE_MODE}}
+            "oneNodeWriteMode": true,
+        {{/ONE_NODE_WRITE_MODE}}
+        {{^ONE_NODE_WRITE_MODE}}
+            "oneNodeWriteMode": false,
+        {{/ONE_NODE_WRITE_MODE}}
+
+        {{#SIZE}} {{! Manta }}
+            "postgresConfFile": "postgresql.manta.{{SIZE}}.conf",
+        {{/SIZE}}
+        {{^SIZE}} {{! Triton }}
+            "postgresConfFile": "postgresql.sdc.conf",
+        {{/SIZE}}
+
+       "snapShotterCfg": {
             "snapshotDir": "/manatee/pg/.zfs/snapshot/",
             "pollInterval": 5000,
             "snapshotNumber": 5,
-            "pgUrl": "tcp://postgres@{{#auto.MANTA_IP}}{{auto.MANTA_IP}}{{/auto.MANTA_IP}}{{^auto.MANTA_IP}}{{auto.PRIMARY_IP}}{{/auto.MANTA_IP}}:5432/postgres"
+            "dataset": "zones/{{auto.ZONENAME}}/data/manatee",
+
+            {{#auto.MANTA_IP}} {{! Manta }}
+                "pgUrl": "tcp://postgres@{{auto.MANTA_IP}}:5432/postgres"
+            {{/auto.MANTA_IP}}
+            {{^auto.MANTA_IP}} {{! Triton }}
+                "pgUrl": "tcp://postgres@{{auto.PRIMARY_IP}}:5432/postgres"
+            {{/auto.MANTA_IP}}
+
         },
         "syncStateCheckerCfg": {
             "interval": 1000,
             "cookieLocation": "/var/tmp/manatee_sync_state"
         },
-        "url": "tcp://postgres@{{#auto.MANTA_IP}}{{auto.MANTA_IP}}{{/auto.MANTA_IP}}{{^auto.MANTA_IP}}{{auto.PRIMARY_IP}}{{/auto.MANTA_IP}}:5432/postgres",
+
+        {{#auto.MANTA_IP}} {{! Manta }}
+            "url": "tcp://postgres@{{auto.MANTA_IP}}:5432/postgres",
+        {{/auto.MANTA_IP}}
+        {{^auto.MANTA_IP}} {{! Triton }}
+            "url": "tcp://postgres@{{auto.PRIMARY_IP}}:5432/postgres",
+        {{/auto.MANTA_IP}}
+
         "zfsClientCfg": {
-            "dataset": "zones/{{auto.ZONENAME}}/data/manatee",
-            "parentDataset": "zones/{{auto.ZONENAME}}/data",
             "snapshotDir": "/manatee/pg/.zfs/snapshot/",
-            "zfsHost": "{{#auto.MANTA_IP}}{{auto.MANTA_IP}}{{/auto.MANTA_IP}}{{^auto.MANTA_IP}}{{auto.PRIMARY_IP}}{{/auto.MANTA_IP}}",
             "zfsPort": 1234,
             "pollInterval": 1000,
             "zfsPath": "/usr/sbin/zfs",
-            "mountpoint": "/manatee/pg"
-        }
+            "mountpoint": "/manatee/pg",
+            "dataset": "zones/{{auto.ZONENAME}}/data/manatee",
+            "parentDataset": "zones/{{auto.ZONENAME}}/data",
+
+            {{#auto.MANTA_IP}} {{! Manta }}
+                "zfsHost": "{{auto.MANTA_IP}}"
+            {{/auto.MANTA_IP}}
+            {{^auto.MANTA_IP}} {{! Triton }}
+                "zfsHost": "{{auto.PRIMARY_IP}}"
+            {{/auto.MANTA_IP}}
+
+       }
     },
     "zkCfg": {
-        "connStr": "{{#ZK_HA_SERVERS}}{{host}}:{{port}}{{^last}},{{/last}}{{/ZK_HA_SERVERS}}{{^ZK_HA_SERVERS}}{{#ZK_SERVERS}}{{host}}:{{port}}{{^last}},{{/last}}{{/ZK_SERVERS}}{{/ZK_HA_SERVERS}}",
         "opts": {
             "sessionTimeout": 60000,
             "spinDelay": 1000,
             "retries": 2
-        }
+        },
+
+        {{!
+            Here we're particularly sensitive to whitespace so this one liner
+            must stay for now.  Libraries like handlebars can manage this with
+            the "~" character, but hogan.js appears to stick to the mustache
+            spec where this isn't supported.
+        }}
+        "connStr": "{{#ZK_HA_SERVERS}}{{host}}:{{port}}{{^last}},{{/last}}{{/ZK_HA_SERVERS}}{{^ZK_HA_SERVERS}}{{#ZK_SERVERS}}{{host}}:{{port}}{{^last}},{{/last}}{{/ZK_SERVERS}}{{/ZK_HA_SERVERS}}"
     },
-    "disableSitter": {{^DISABLE_SITTER}}false{{/DISABLE_SITTER}}{{{DISABLE_SITTER}}}
+
+    {{#DISABLE_SITTER}}
+        "disableSitter": true
+    {{/DISABLE_SITTER}}
+    {{^DISABLE_SITTER}}
+        "disableSitter": false
+    {{/DISABLE_SITTER}}
+
 }

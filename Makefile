@@ -22,6 +22,7 @@ endif
 
 JSL_CONF_NODE	 = ./tools/jsl.node.conf
 JSSTYLE_FLAGS	 = -f ./tools/jsstyle.conf
+CATEST		 = ./tools/catest
 
 #
 # Files
@@ -95,6 +96,10 @@ AGENTS		= amon config registrar waferlock
 #
 .PHONY: all
 all: $(SMF_MANIFESTS) $(STAMP_NODE_MODULES) $(PG_PREFAULTER) manta-scripts
+
+test: all
+	$(CATEST) -a
+	@echo tests okay
 
 .PHONY: manta-scripts
 manta-scripts: deps/manta-scripts/.git

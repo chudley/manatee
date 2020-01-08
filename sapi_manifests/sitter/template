@@ -37,7 +37,7 @@
 
         {{#PG_DIR}} {{! Manta }}
             "dataDir": "{{PG_DIR}}",
-            "dataConfig": "{{PG_DIR}}/../manatee/pg/manatee-config.json",
+            "dataConfig": "{{PG_DIR}}/../manatee-config.json",
         {{/PG_DIR}}
         {{^PG_DIR}} {{! Triton }}
             "dataDir": "/manatee/pg/data",

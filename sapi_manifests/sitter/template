@@ -7,7 +7,7 @@
     {{#MANATEE_SHARD_PATH}} {{! Manta }}
         "shardPath": "{{MANATEE_SHARD_PATH}}",
     {{/MANATEE_SHARD_PATH}}
-    {{#manatee_shard}} {{! Triton}}
+    {{#manatee_shard}} {{! Triton }}
         "shardPath": "/manatee/{{manatee_shard}}",
     {{/manatee_shard}}
 
